@@ -28,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: "1.21" # 使用你项目中所需的 Go 版本
+          go-version: "1.23" # 使用你项目中所需的 Go 版本
 
       # 设置 GitHub Token 以便进行发布操作
       - name: Set up GitHub token
