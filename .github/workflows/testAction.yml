@@ -1,83 +1,41 @@
-name: Go Build and Release
+name: goreleaser
 
 on:
   push:
-    branches:
-      - main # 当推送到 main 分支时自动触发
-  pull_request:
-    branches:
-      - main # 也可以在 PR 发送到 main 时触发
-  workflow_dispatch: # 允许手动触发
+    tags:
+      - "*"
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  goreleaser:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        # 通过 matrix 实现多平台构建
-        goos: [linux, windows, darwin]
-        goarch: [amd64, arm64]
-
+    timeout-minutes: 60
     steps:
-      # 检出代码
-      - name: Checkout code
+      - name: "Check out code"
         uses: actions/checkout@v3
-
-      # 设置 Go 环境
-      - name: Set up Go
-        uses: actions/setup-go@v3
         with:
-          go-version: "1.23" # 使用你项目中所需的 Go 版本
+          fetch-depth: 0
 
-      # 设置 GitHub Token 以便进行发布操作
-      - name: Set up GitHub token
-        run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-
-      # 设置 GOOS 和 GOARCH 环境变量
-      - name: Set GOOS and GOARCH
-        run: echo "GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}" >> $GITHUB_ENV
-
-      # 构建 Go 二进制文件
-      - name: Build Go binary
-        run: |
-          go build -o myapp-${{ matrix.goos }}-${{ matrix.goarch }} .
-
-      # 上传构建的二进制文件为 Artifacts
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+      - name: "Set up Go"
+        uses: actions/setup-go@v4
         with:
-          name: go-binaries
-          path: |
-            myapp-linux-amd64
-            myapp-linux-arm64
-            myapp-darwin-amd64
-            myapp-darwin-arm64
-            myapp-windows-amd64.exe
-            myapp-windows-arm64.exe
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      # 获取之前的 Artifacts 文件
-      - name: Download Artifacts
-        uses: actions/download-artifact@v3
+          go-version: 1.20.14
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
         with:
-          name: go-binaries
+          install-only: true
 
-      # 发布到 GitHub Release
-      - name: Create GitHub Release
-        id: release
-        uses: softprops/action-gh-release@v1
+      - name: UPX version
+        run: upx --version
+
+      - name: "Create release on GitHub"
+        uses: goreleaser/goreleaser-action@v4
         with:
-          files: |
-            myapp-linux-amd64
-            myapp-linux-arm64
-            myapp-darwin-amd64
-            myapp-darwin-arm64
-            myapp-windows-amd64.exe
-            myapp-windows-arm64.exe
+          distribution: goreleaser
+          version: latest
+          args: "release --clean --debug -f .github/conf/.goreleaser.yml"
+          workdir: .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
