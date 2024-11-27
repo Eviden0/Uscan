@@ -1,41 +1,26 @@
-name: goreleaser
+name: build
 
 on:
-  push:
-    tags:
-      - "*"
-
-permissions:
-  contents: write
+  release:
+    types: [created] # 表示在创建新的 Release 时触发
 
 jobs:
-  goreleaser:
+  build-go-binary:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin] # 需要打包的系统
+        goarch: [amd64, arm64] # 需要打包的架构
+        exclude: # 排除某些平台和架构
+          - goarch: arm64
+            goos: windows
     steps:
-      - name: "Check out code"
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: wangyoucao577/go-release-action@v1.30
         with:
-          fetch-depth: 0
-
-      - name: "Set up Go"
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.20.14
-      - name: Install UPX
-        uses: crazy-max/ghaction-upx@v3
-        with:
-          install-only: true
-
-      - name: UPX version
-        run: upx --version
-
-      - name: "Create release on GitHub"
-        uses: goreleaser/goreleaser-action@v4
-        with:
-          distribution: goreleaser
-          version: latest
-          args: "release --clean --debug -f .github/conf/.goreleaser.yml"
-          workdir: .
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }} # 一个默认的变量，用来实现往 Release 中添加文件
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          goversion: 1.24 # 可以指定编译使用的 Golang 版本
+          binary_name: "hello" # 可以指定二进制文件的名称
+          extra_files: LICENSE README.md # 需要包含的额外文件
